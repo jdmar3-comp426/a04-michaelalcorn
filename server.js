@@ -26,7 +26,8 @@ app.get("/app/", (req, res, next) => {
 // CREATE a new user (HTTP method POST) at endpoint /app/new/
 app.post('/app/new', function (req, res) {
 	const stmt = db.prepare("INSERT INTO userinfo (user, pass) VALUES (?,?)");
-	let info = stmt.run(req.body.user, md5(req.body.id));
+	var protected = md5(req.body.pass)
+	let info = stmt.run(req.body.user, protected);
 	res.status(201).json({message: "%X% record created: ID %Y% (201)".replace("%X%", info.changes).replace("%Y%", info.lastInsertRowid)})
   })
 
@@ -43,9 +44,18 @@ app.get("/app/user/:id", (req, res) => {
 	res.status(200).json(get);
 });
 // UPDATE a single user (HTTP method PATCH) at endpoint /app/update/user/:id
-
+app.patch('/app/update/user/:id', function (req, res) {
+	const stmt = db.prepare("UPDATE userinfo SET user = COALESCE(?,user), pass = COALESCE(?,pass) WHERE id = ?");
+	var protected = md5(req.body.pass)
+	let info = stmt.run(req.body.user, protected, req.params.id);
+	res.status(200).json({message: "%X% record updated: ID %Y% (200)".replace("%X%", info.changes).replace("%Y%", info.lastInsertRowid)})
+  })
 // DELETE a single user (HTTP method DELETE) at endpoint /app/delete/user/:id
-
+app.delete('/app/delete/user/:id', function (req, res) {
+	const stmt = db.prepare("DELETE FROM userinfo WHERE id = ?");
+	let info = stmt.run(req.params.id);
+	res.status(200).json({message: "%X% record deleted: ID %Y% (200)".replace("%X%", info.changes).replace("%Y%", req.params.id)})
+  })
 // Default response for any other request
 app.use(function(req, res){
 	res.json({"message":"Endpoint not found. (404)"});
